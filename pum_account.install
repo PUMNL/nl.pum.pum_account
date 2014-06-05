@@ -1,0 +1,31 @@
+<?php
+$newRoles = array(	'IT',
+					'MT',
+					'P&O',
+					'Prof',
+					'Recruitment Officer',
+					'Anamon',
+					'PR',
+					'Finance',
+					'PUMRep',
+					'SC',
+					'CC',
+					'Customer',
+					'Expert',					
+					'Partner',					
+);
+
+/* 
+@todo BUG: This code is executed twice when enabling the module, i don't get it...
+It's not a big problem because it will check if a role exists but have to check it out later
+*/
+
+foreach ($newRoles as $r) {
+	if(!user_role_load_by_name($r)){
+		$role = new stdClass();
+		$role->name = $r;
+		user_role_save($role);
+	} else {
+		dpm('User Role: '.$r.' already exists!');
+	}
+}

@@ -1,0 +1,211 @@
+<?php
+/**
+ * pum_account_help()
+ * Implements hook_help()
+ * 
+ * @param mixed $path
+ * @param mixed $arg
+ * @return
+ */
+function pum_account_help($path, $arg) {
+	$txt = '';
+	$org = 'PUM Netherlands senior experts';
+	switch ($path) {
+	case "admin/help#pum_account":
+		$txt .= '<p>';
+		$txt .= t(' Implementation of user account creation for %org.', array('%org'=>$org)) . '<br />';
+		$txt .= t('e.g. "%urlexp" and "%urlcust".', array('%urlexp'=>'/newexpert', '%urlcust'=>'/newcustomer'));
+		return $txt;
+	break;
+	}
+}
+
+/**
+ * pum_account_menu()
+ * Implements hook_menu()
+ * 
+ * @return
+ */
+function pum_account_menu() {
+	$items = array();
+	$items['newexpert'] = array(
+		'title' => t('New expert account'),
+		'description' => t('Register a new account with an experts privileges'),
+		'page callback' => 'drupal_get_form',
+		'page arguments' => array('user_register_form'),
+		'access callback' => 'user_register_access',
+		'type' => MENU_NORMAL_ITEM,
+		'weight' => -2
+	);
+	$items['newcustomer'] = array(
+		'title' => t('New customer account'),
+		'description' => t('Register a new account with a customers privileges'),
+		'page callback' => 'drupal_get_form',
+		'page arguments' => array('user_register_form'),
+		'access callback' => 'user_register_access',
+		'type' => MENU_NORMAL_ITEM,
+		'weight' => -1
+	);
+		
+	return $items;
+}
+
+/**
+ * pum_account_user_insert()
+ * Implements hook_user_insert()
+ * 
+ * Based on referer URL the correct userrole will be set to the useraccount.
+ * 
+ * @param mixed $edit
+ * @param mixed $account
+ * @param mixed $category
+ * @return void
+ */
+function pum_account_user_insert(&$edit, $account, $category) {
+	$roles = user_roles();
+	$role_authenticateduser_id = array_search('authenticated user', $roles);
+
+	if (arg(0) == 'newexpert') {
+		// If Expert
+		$role_expert_id = array_search('Expert', $roles);
+		$account->roles = array(
+			$role_authenticateduser_id => 'authenticated user',
+			$role_expert_id => 'Expert',
+		);
+		
+		//Set user status to active
+		$user = user_load($account->uid);
+		$user->status = 1;		
+		user_save($user);
+		
+	} elseif (arg(0) == 'newcustomer') {
+		// If Customer
+		$role_customer_id = array_search('Customer', $roles);
+		$account->roles = array(
+			$role_authenticateduser_id => 'authenticated user',
+			$role_customer_id => 'Customer',
+		);
+		
+    	//Set user status to active
+		$user = user_load($account->uid);
+		$user->status = 1;		
+		user_save($user);
+	} else {
+		//created by admin or url violation attempt!
+	}
+	
+}
+
+/**
+ * _toggleFields()
+ * 
+ * Function to set all fields named in an array to certain values for #required and #access
+ * 
+ * Please use 1 or 0 for $mandatorySwitch and $accessSwitch, not TRUE/FALSE
+ * 
+ * @param mixed $form
+ * @param mixed $fldAr
+ * @param mixed $mandatorySwitch
+ * @param mixed $accessSwitch
+ * @return void
+ * 
+ */
+function _toggleFields(&$form, $fldAr, $mandatorySwitch, $accessSwitch) {
+	foreach($fldAr as $fieldName) {
+		if (!empty($form[$fieldName]['und']['#options'])) {
+			$form[$fieldName]['und']['#required'] = $mandatorySwitch;
+		} else {
+			$form[$fieldName]['und'][0]['value']['#required'] = $mandatorySwitch;
+		}
+		$form[$fieldName]['#access'] = $accessSwitch;
+	}
+}
+
+/**
+ * pum_account_form_alter()
+ * Implements hook_form_alter().
+ * 
+ * @param mixed $form
+ * @param mixed $form_state
+ * @param mixed $form_id
+ * @return void
+ */
+function pum_account_form_alter(&$form, &$form_state, $form_id) {
+	//dpm('FORM ID = '.$form_id);
+	//dpm($form, 'form');
+	
+	//current user id
+	global $user;
+	$roles = $user->roles;
+	$isAdmin = in_array('administrator', array_values($user->roles));
+	
+	switch ($form_id) {
+    	case 'user_register_form':
+    		if ($isAdmin == TRUE) {
+	    		//dpm('you are an admin');
+	    		
+	    		
+	    	} else {
+	    		//dpm('you are NOT an admin');
+	    		
+	    		$form[$form_id]['accounttype'] = array(
+			    	'#type' => 'hidden',
+					'#title' => t('Account Type'),
+					'#options' => 	array(	1 => 'IT',
+											2 => 'MT',
+											3 => 'P&O',
+											4 => 'Prof',
+											5 => 'Recruitment Officer',
+											6 => 'Anamon',
+											7 => 'PR',
+											8 => 'Finance',
+											9 => 'PUMRep',
+											10 => 'SC',
+											11 => 'CC',
+											12 => 'Customer',
+											13 => 'Expert',					
+											14 => 'Partner'
+									),
+			     	'#required' => TRUE,
+		     	 	'#default_value' => '12',
+		    	);
+
+	    		$form[$form_id]['status']['#options'][2] = 'Prospect';
+					    		
+	    		if (isset($_GET['q']) && $_GET['q'] == 'newexpert') {
+		    		$form['accounttype']['#default_value'] = '13';
+		    	} elseif (isset($_GET['q']) && $_GET['q'] == 'newcustomer') {
+		    		$form['accounttype']['#default_value'] = '12';
+		    	} else {
+		    		$form['accounttype']['#default_value'] = '12';
+		    	}
+	    	}
+    	case 'user_profile_form':
+    		
+    		
+    	default:
+    	
+	}
+}
+
+function pum_account_user_view($account) {
+	$account->content['summary']['pum_account_type'] = array(
+		'#type' => 'user_profile_item',
+		'#title' => 'PUM Role(s)',
+        '#attributes' => array('class' => array('profile-account-type')),
+		
+	);
+	
+	foreach ($account->roles as $role_id => $role) {
+		if ($role == 'authenticated user') {
+			//skip because we don't want that text to be visible, everyone with an account is authenticated user
+		} else {
+			//ensure that array key exists
+			if (!array_key_exists('#markup', $account->content['summary']['pum_account_type'])) {
+				$account->content['summary']['pum_account_type']['#markup'] = "";
+			}
+			
+			$account->content['summary']['pum_account_type']['#markup'] = $role.'<br />'.$account->content['summary']['pum_account_type']['#markup'];
+		}
+	}
+}

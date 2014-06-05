@@ -1,0 +1,7 @@
+name = PUM Account
+description = Implementation of user account creation for PUM Netherlands senior experts.
+package = PUM
+core = 7.x
+version = "7.x-1.0"
+project = pum_account
+dependencies[] = devel
