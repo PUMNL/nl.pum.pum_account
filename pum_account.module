@@ -33,21 +33,75 @@ function pum_account_menu() {
 		'description' => t('Register a new account with an experts privileges'),
 		'page callback' => 'drupal_get_form',
 		'page arguments' => array('user_register_form'),
-		'access callback' => 'user_register_access',
-		'type' => MENU_NORMAL_ITEM,
-		'weight' => -2
+		'access arguments' => array('access content'),
+		'type' => MENU_CALLBACK,
+		'weight' => -2,
+		//'menu_name' => 'pum_account'
 	);
 	$items['newcustomer'] = array(
 		'title' => t('New customer account'),
 		'description' => t('Register a new account with a customers privileges'),
 		'page callback' => 'drupal_get_form',
 		'page arguments' => array('user_register_form'),
-		'access callback' => 'user_register_access',
-		'type' => MENU_NORMAL_ITEM,
-		'weight' => -1
+		'access arguments' => array('access content'),
+		'type' => MENU_CALLBACK,
+		'weight' => -1,
+		//'menu_name' => 'pum_account'
 	);
 		
 	return $items;
+}
+
+/**
+ * pum_account_block_info()
+ * Implements hook_block_info()
+ * 
+ * @return
+ */
+function pum_account_block_info() {
+	global $user;
+	$approved_roles = array('anonymous user', 'administrator');
+	
+	if (is_array($user->roles)) {
+		if (count(array_intersect($user->roles, $approved_roles)) > 0) {
+			$blocks['pum_account'] = array (
+				'info' => t('PUM Account'),
+				'status' => 1,
+				'cache' => DRUPAL_NO_CACHE,
+				'region' => 'sidebar_first',
+			);
+			
+			return $blocks;
+		}
+	}
+}
+
+/**
+ * pum_account_block_view()
+ * Implements hook_block_view()
+ * 
+ * @param string $delta
+ * @return
+ */
+function pum_account_block_view($delta = '') {
+	global $user;	
+	$approved_roles = array('anonymous user', 'administrator');
+	
+	if (is_array($user->roles)) {
+		if (count(array_intersect($user->roles, $approved_roles)) > 0) {
+		  $block = array();
+		  switch ($delta) {
+		    case 'pum_account':
+		      $block['subject'] = 'PUM Account';
+		      $block['content'] = '<a href="/newexpert">New expert account</a>';
+		      $block['content'].= '<br />';
+			  $block['content'].= '<a href="/newcustomer">New customer account</a>';
+		      return $block;
+		    default:
+		      break;
+		  }
+  		}
+	}
 }
 
 /**
@@ -77,6 +131,10 @@ function pum_account_user_insert(&$edit, $account, $category) {
 		$user = user_load($account->uid);
 		$user->status = 1;		
 		user_save($user);
+		
+		
+		// Now the drupal account is created, but the user role of the CiviCRM contact should be updated.
+		
 		
 	} elseif (arg(0) == 'newcustomer') {
 		// If Customer
@@ -143,8 +201,6 @@ function pum_account_form_alter(&$form, &$form_state, $form_id) {
     	case 'user_register_form':
     		if ($isAdmin == TRUE) {
 	    		//dpm('you are an admin');
-	    		
-	    		
 	    	} else {
 	    		//dpm('you are NOT an admin');
 	    		
@@ -152,34 +208,34 @@ function pum_account_form_alter(&$form, &$form_state, $form_id) {
 			    	'#type' => 'hidden',
 					'#title' => t('Account Type'),
 					'#options' => 	array(	1 => 'IT',
-											2 => 'MT',
+											2 => 'PUM Management',
 											3 => 'P&O',
 											4 => 'Prof',
-											5 => 'Recruitment Officer',
-											6 => 'Anamon',
+											5 => 'Recruitment Team Member',
+											6 => 'AnaFin',
 											7 => 'PR',
-											8 => 'Finance',
-											9 => 'PUMRep',
-											10 => 'SC',
-											11 => 'CC',
-											12 => 'Customer',
-											13 => 'Expert',					
-											14 => 'Partner'
+											8 => 'Representative',
+											9 => 'Sector Coordinator',
+											10 => 'Country Coordinator',
+											11 => 'Customer',
+											12 => 'Expert',					
+											13 => 'Partner',
+											14 => 'Gebruikers Vertegenwoordiger',
 									),
 			     	'#required' => TRUE,
 		     	 	'#default_value' => '12',
 		    	);
 
 	    		$form[$form_id]['status']['#options'][2] = 'Prospect';
-					    		
-	    		if (isset($_GET['q']) && $_GET['q'] == 'newexpert') {
-		    		$form['accounttype']['#default_value'] = '13';
-		    	} elseif (isset($_GET['q']) && $_GET['q'] == 'newcustomer') {
-		    		$form['accounttype']['#default_value'] = '12';
-		    	} else {
-		    		$form['accounttype']['#default_value'] = '12';
-		    	}
-	    	}
+				
+ 				if (isset($_GET['q']) && $_GET['q'] == 'newexpert') {
+					$form['accounttype']['#default_value'] = '12';
+				} elseif (isset($_GET['q']) && $_GET['q'] == 'newcustomer') {
+					$form['accounttype']['#default_value'] = '11';
+				} else {
+					$form['accounttype']['#default_value'] = '11';
+				}			
+	    	}	    	      
     	case 'user_profile_form':
     		
     		
@@ -188,12 +244,18 @@ function pum_account_form_alter(&$form, &$form_state, $form_id) {
 	}
 }
 
+/**
+ * pum_account_user_view()
+ * Implements hook_user_view()
+ * 
+ * @param mixed $account
+ * @return void
+ */
 function pum_account_user_view($account) {
 	$account->content['summary']['pum_account_type'] = array(
 		'#type' => 'user_profile_item',
 		'#title' => 'PUM Role(s)',
         '#attributes' => array('class' => array('profile-account-type')),
-		
 	);
 	
 	foreach ($account->roles as $role_id => $role) {
@@ -208,4 +270,213 @@ function pum_account_user_view($account) {
 			$account->content['summary']['pum_account_type']['#markup'] = $role.'<br />'.$account->content['summary']['pum_account_type']['#markup'];
 		}
 	}
+}
+
+/**
+ * pum_account_user_update()
+ * Implements hook_user_update()
+ * 
+ * 1) compare array $old_roles with $new_roles
+ * 2) put differences in new array $role_diff
+ * 3) foreach $role_diff update pum_account (role, date_start,date_end)
+ * 
+ * @param mixed $edit
+ * @param mixed $account
+ * @param mixed $category
+ * @return void
+ */
+function pum_account_user_update(&$edit, $account, $category) {
+	//dpm($edit, 'edit');
+	//dpm($account, 'account');
+	//dpm($category, 'category');	
+	
+	global $new_roles;
+	global $old_roles;
+	$new_roles = $account->roles;
+	$role_diff = pum_array_key_diff($old_roles, $new_roles);
+	$skipped_roles = array('1','2');							//skipped roles: all users have these roles
+
+	global $databases;
+	$mysqli = new mysqli(	$databases['default']['default']['host'],
+							$databases['default']['default']['username'],
+					 		$databases['default']['default']['password'],
+							$databases['default']['default']['database']);
+
+	//dpm($role_diff, 'role_diff');
+	
+	if(array_key_exists('added',$role_diff) && count($role_diff['added']) > 0) {
+		foreach ($role_diff['added'] as $key => $value) {
+			$q_role = "SELECT * FROM `pum_account` 
+							WHERE user_id = '".$account->uid."' 
+								AND role_id = '".$value."'";
+			$eq_role = db_query($q_role);
+			$result = $eq_role->fetchAll();
+			$rowcount = count($result);
+			$date = date('Y-m-d H:i:s');
+			
+			//first check if the added role is still active, and if so paste an end date to it.
+			//altought this normally should not be possible, it could be that someone manually changed something in the database
+			if ($rowcount > 0) {
+				//Altought it should not be possible that the same role is still active while the same role is added as new role
+				//we check it and if so update the role with the current end date.
+				foreach ($result as $key2 => $value2) {
+					if (empty($value2->date_end)) {
+						$query = "UPDATE pum_account 
+									SET date_end = '".$date."' 
+									WHERE user_id = '".$account->uid."' 
+										AND role_id = '".$value2->role_id."' 
+										AND (`date_end` IS NULL OR `date_end` = '0000-00-00 00:00:00')";
+						$result = $mysqli->query($query);
+					} else {
+						//skip entry
+					}
+				}
+			}
+			
+			if ($value == '1' | $value == '2') {
+					//skip: anonymous or authenticated user roles
+			} else {
+				//add new role to the database
+				
+				$query = "INSERT INTO pum_account (user_id,role_id,date_start,date_end) 
+							VALUES ('".$account->uid."','".$value."','".$date."', NULL)";
+				$result = $mysqli->query($query);				
+			}
+		}
+	}
+	
+	if(array_key_exists('removed',$role_diff) && count($role_diff['removed']) > 0) {
+		foreach ($role_diff['removed'] as $key => $value) {
+			//skip authenticated user, user has this role by default
+			if (!in_array($value, $skipped_roles)) {
+				$q_role = "SELECT * FROM `pum_account` 
+							WHERE user_id = '".$account->uid."' 
+								AND role_id = '".$value."' 
+								AND (`date_end` IS NULL OR `date_end` = '0000-00-00 00:00:00')";
+				$eq_role = db_query($q_role);
+				$result = $eq_role->fetchAll();
+				$rowcount = count($result);
+				$date = date('Y-m-d H:i:s');
+				
+				if ($rowcount > 0) {
+					foreach ($result as $key => $value) {
+						if (empty($value->date_end)) {
+							$query = "UPDATE pum_account 
+										SET `date_end` = '".$date."' 
+										WHERE `user_id` = '".$account->uid."' 
+											AND `role_id` = '".$value->role_id."' 
+											AND (`date_end` IS NULL OR `date_end` = '0000-00-00 00:00:00')";
+							$result = $mysqli->query($query);
+						} else {
+							//skip entry
+						}
+					}
+				} else {
+					//Should not be possible, but maybe it is manually entered into the database.
+					//To make sure, log the entry into the database, so we can always see that the user had this role for further investigation
+					$result = db_insert('pum_account')
+								->fields(array(	'user_id' => (int)$account->uid,
+												'role_id' => (int)$value,
+												'date_start' => $date,
+												'date_end' => $date
+										))
+								->execute();
+				}
+			}
+		}
+	}
+}
+
+/**
+ * pum_account_checkrole()
+ * 
+ * With this function you can check if a user has a role or not
+ * 
+ * @param mixed $user - User object
+ * @param mixed $role - role to check
+ * @example
+ * pum_account_checkrole($userobj, 'sc');
+ * 
+ * @return true or false
+ */
+function pum_account_checkrole($user, $role) {
+	$q_role = "SELECT * FROM `pum_account` 
+				WHERE user_id = '".$user->uid."' 
+					AND role_id = '".$role."' 
+					AND (`date_end` IS NULL OR `date_end` = '0000-00-00 00:00:00')";
+	$eq_role = db_query($q_role);
+	$result = $eq_role->fetchAll();
+	$rowcount = count($result);
+	
+	if ($rowcount > 0) {
+		return true;
+	} else {
+		return false;
+	}
+}
+
+/**
+ * pum_array_key_diff()
+ * 
+ * This function loops through two specified array's passed to the function
+ * and put the key differences between the array's in a new array $arr_diff
+ * It should be compatible with 2-dimensional array's
+ *  
+ * @todo Function rewrite for better compatibility with multidimensional array's. Currently it's only compatible up to 2 dimensions
+ * 
+ * @param array $arr1 
+ * @param array $arr2
+ * @return array $arr_diff
+ * $arr_diff['added'] - array of added keys
+ * $arr_diff['removed'] - array of removed keys
+ */
+function pum_array_key_diff($arr1, $arr2) {
+	$arr_diff = array('added','removed');
+	//dpm($arr1, 'arr1');
+	//dpm($arr2, 'arr2');
+	
+	foreach ($arr1 as $key => $value) {
+		if (is_array($value)) {
+			//multidimensional array
+			foreach ($value as $key2 => $value2) {
+				$arr_diff['added'][] = $key2;
+			}
+		} else {
+			if (!array_key_exists($key, $arr2)) {
+				$arr_diff['removed'][] = $key;
+			}	
+		}
+	}
+	
+	foreach ($arr2 as $key => $value) {
+		if (is_array($value)) {
+			//multidimensional array
+			foreach ($value as $key2 => $value2) {
+				if (!array_key_exists($key2, $arr1)) {
+					$arr_diff['removed'][] = $key2;
+				}
+			}
+		} else {
+			if (!array_key_exists($key, $arr1)) {
+				$arr_diff['added'][] = $key;
+			}
+		}
+	}
+	
+	return $arr_diff;
+}
+
+/**
+ * pum_account_user_presave()
+ * Implements hook_user_presave()
+ * 
+ * @param mixed $edit
+ * @param mixed $account
+ * @param mixed $category
+ * @return void
+ */
+function pum_account_user_presave(&$edit, $account, $category) {
+	//within here save previous user roles, then in pum_account_user_update() check new roles
+	global $old_roles;
+	$old_roles = $account->roles;
 }

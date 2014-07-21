@@ -1,31 +1,50 @@
 <?php
-$newRoles = array(	'IT',
-					'MT',
-					'P&O',
-					'Prof',
-					'Recruitment Officer',
-					'Anamon',
-					'PR',
-					'Finance',
-					'PUMRep',
-					'SC',
-					'CC',
-					'Customer',
-					'Expert',					
-					'Partner',					
-);
-
-/* 
-@todo BUG: This code is executed twice when enabling the module, i don't get it...
-It's not a big problem because it will check if a role exists but have to check it out later
-*/
-
-foreach ($newRoles as $r) {
-	if(!user_role_load_by_name($r)){
-		$role = new stdClass();
-		$role->name = $r;
-		user_role_save($role);
-	} else {
-		dpm('User Role: '.$r.' already exists!');
+/**
+ * pum_account_install()
+ * Implements hook_install()
+ * 
+ */
+function pum_account_install() {
+	$newRoles = array(	'IT',
+						'PUM Management',
+						'P&O',
+						'Prof',
+						'Recruitment Team Member',
+						'AnaFin',
+						'PR',
+						'Representative',
+						'Sector Coordinator',
+						'Country Coordinator',
+						'Customer',
+						'Expert',					
+						'Partner',
+						'Gebruikers Vertegenwoordiger',
+	);
+	
+	/* 
+	@todo BUG: This code is executed twice when enabling the module, i don't get it...
+	It's not a big problem because it will check if a role exists but have to check it out later
+	*/
+	
+	foreach ($newRoles as $r) {
+		if(!user_role_load_by_name($r)){
+			$role = new stdClass();
+			$role->name = $r;
+			user_role_save($role);
+		} else {
+			dpm('User Role: '.$r.' already exists!');
+		}
 	}
+	
+	$query = file_get_contents(dirname(__FILE__).'/sql/pum_account.sql');
+	db_query($query);
+}
+
+/**
+ * pum_account_install()
+ * Implements hook_uninstall()
+ * 
+ */
+function pum_account_uninstall() {
+	
 }
