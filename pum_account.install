@@ -16,6 +16,7 @@ function pum_account_install() {
 						'Sector Coordinator',
 						'Country Coordinator',
 						'Customer',
+						'Candidate expert',
 						'Expert',					
 						'Partner',
 						'Gebruikers Vertegenwoordiger',
