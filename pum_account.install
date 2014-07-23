@@ -33,7 +33,7 @@ function pum_account_install() {
 			$role->name = $r;
 			user_role_save($role);
 		} else {
-			dpm('User Role: '.$r.' already exists!');
+			drupal_set_message('User Role: '.$r.' already exists!');
 		}
 	}
 	
