@@ -15,11 +15,14 @@ function pum_account_install() {
 						'Representative',
 						'Sector Coordinator',
 						'Country Coordinator',
-						'Customer',
+						'Customer (contact)',
 						'Candidate expert',
 						'Expert',					
-						'Partner',
+						'Partner contact',
 						'Gebruikers Vertegenwoordiger',
+						'CV Intake',
+						'Ontwerpwerk',
+						'BCD',
 	);
 	
 	/* 
